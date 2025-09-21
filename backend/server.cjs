@@ -2,119 +2,63 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: './config.env' });
+
+// Use environment variables directly (Vercel provides these)
+const ATLAS_URI = process.env.ATLAS_URI;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Only use dotenv in development
+if (NODE_ENV === 'development') {
+  try {
+    require('dotenv').config({ path: './config.env' });
+    console.log('Development environment variables loaded from config.env');
+  } catch (error) {
+    console.warn('config.env not found, using process environment variables');
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 6002;
 
-// Enhanced CORS configuration for Vercel
+// Enhanced CORS for Vercel (allow your frontend domain)
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin) return callback(null, true);
-
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:3001',
-      process.env.FRONTEND_URL,
-      'https://*.vercel.app',
-      'https://v-web-frontend-flame.vercel.app',
-      'https://v-web-frontend-s8pe.vercel.app',
-      /\.vercel\.app$/ // Allow any vercel subdomain
-    ].filter(Boolean);
-
-    if (allowedOrigins.indexOf(origin) !== -1 ||
-      allowedOrigins.some(allowed => origin.endsWith(allowed)) ||
-      process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked for origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://v-web-frontend-flame.vercel.app',
+    'https://v-web-frontend-s8pe.vercel.app'
+  ],
   credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json());
 
-// Enhanced Mongoose Connection Setup for serverless
+// Enhanced Mongoose Connection Setup
 const connectDB = async () => {
-  // Check if we're already connected
-  if (mongoose.connection.readyState === 1) {
-    console.log('Using existing MongoDB connection');
-    return mongoose.connection;
-  }
-
   try {
-    if (!process.env.ATLAS_URI) {
+    if (!ATLAS_URI) {
       throw new Error('ATLAS_URI environment variable is not defined');
     }
 
-    const conn = await mongoose.connect(process.env.ATLAS_URI, {
+    await mongoose.connect(ATLAS_URI, {
       dbName: 'healthcare',
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 30000,
-      maxPoolSize: 5, // Reduced for serverless
-      minPoolSize: 1,
-      family: 4, // Use IPv4
+      maxPoolSize: 10,
       retryWrites: true,
       w: 'majority'
     });
-
     console.log('MongoDB connected via Mongoose');
-    return conn;
   } catch (err) {
     console.error('Mongoose connection error:', err);
-    // In serverless, we don't exit the process
-    throw err;
+    // Don't exit process in serverless environment
+    if (NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 };
 
-// Global connection cache for serverless
-let cachedConnection = null;
-
-const connectToDatabase = async () => {
-  if (cachedConnection) {
-    return cachedConnection;
-  }
-
-  try {
-    cachedConnection = await connectDB();
-    return cachedConnection;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    throw error;
-  }
-};
-
-// Serve static files
-app.use(express.static('public'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Health check with DB status (important for Vercel)
-app.get('/api/health', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const dbStatus = mongoose.connection.readyState;
-    res.json({
-      status: 'Healthcare Database API is running',
-      dbStatus: dbStatus === 1 ? 'Connected' : 'Disconnected',
-      environment: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'Healthcare Database API is running',
-      dbStatus: 'Connection failed',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Load routes with error handling
+// Routes - Load with error handling
 const loadRoute = (routePath, routeName) => {
   try {
     const route = require(routePath);
@@ -123,12 +67,32 @@ const loadRoute = (routePath, routeName) => {
     return true;
   } catch (error) {
     console.error(`✗ Failed to load route ${routeName}:`, error.message);
-    // Create a placeholder route to avoid crashes
-    app.use(`/api/${routeName}`, (req, res) => {
-      res.status(501).json({
-        error: `Route ${routeName} is not implemented`,
-        message: 'This API endpoint is temporarily unavailable'
-      });
+
+    // Create placeholder route that works with database
+    app.use(`/api/${routeName}`, async (req, res) => {
+      try {
+        // Try to get data from database if connected
+        if (mongoose.connection.readyState === 1) {
+          const collectionName = routeName.toLowerCase();
+          try {
+            const data = await mongoose.connection.db.collection(collectionName).find({}).toArray();
+            return res.json(data);
+          } catch (dbError) {
+            // Collection doesn't exist, return empty array
+            return res.json([]);
+          }
+        } else {
+          return res.status(503).json({
+            error: 'Database not connected',
+            message: 'Please try again later'
+          });
+        }
+      } catch (error) {
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message
+        });
+      }
     });
     return false;
   }
@@ -155,20 +119,32 @@ loadRoute('./routes/blog.cjs', 'blogs');
 loadRoute('./routes/upload.cjs', 'upload');
 loadRoute('./routes/patient.cjs', 'patients');
 
-// Root endpoint
+// Serve static files
+app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Health check with DB status
 app.get('/', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
   res.json({
-    message: 'Healthcare API Server',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    endpoints: {
-      health: '/api/health',
-      docs: 'Available endpoints: /api/*'
-    }
+    status: 'Healthcare Database API',
+    dbStatus: dbStatus === 1 ? 'Connected' : 'Disconnected',
+    environment: NODE_ENV
   });
 });
 
-// FIXED: 404 handler for API routes - use a parameter instead of *
+// Additional health endpoint for Vercel
+app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  res.json({
+    status: 'API is running',
+    dbStatus: dbStatus === 1 ? 'Connected' : 'Disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler for API routes
+// Use a parameter instead of wildcard for 404 handling
 app.use('/api/:unmatchedRoute', (req, res) => {
   res.status(404).json({
     error: 'API endpoint not found',
@@ -176,27 +152,24 @@ app.use('/api/:unmatchedRoute', (req, res) => {
     attemptedRoute: req.params.unmatchedRoute
   });
 });
-
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server Error:', error);
-  res.status(error.status || 500).json({
-    error: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : error.message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
+  res.status(500).json({
+    error: 'Internal server error',
+    message: NODE_ENV === 'production' ? 'Please try again later' : error.message
   });
 });
 
 // Vercel serverless function handler
 const handler = async (req, res) => {
-  // Connect to database on each request (Vercel serveless functions are stateless)
-  try {
-    await connectToDatabase();
-  } catch (error) {
-    console.error('Database connection failed in handler:', error);
-    // Don't fail the request completely, but note the DB issue
-    req.dbConnectionFailed = true;
+  // Connect to database if not already connected
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error('Database connection failed in handler:', error);
+    }
   }
 
   // Pass the request to Express
@@ -207,13 +180,13 @@ const handler = async (req, res) => {
 module.exports = handler;
 
 // For local development, start the server normally
-if (process.env.NODE_ENV !== 'production') {
+if (NODE_ENV !== 'production') {
   const startServer = async () => {
     try {
-      await connectToDatabase();
+      await connectDB();
       app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
-        console.log(`Health check: http://localhost:${PORT}/api/health`);
+        console.log(`Environment: ${NODE_ENV}`);
       });
     } catch (err) {
       console.error('Server startup failed:', err);
@@ -223,13 +196,8 @@ if (process.env.NODE_ENV !== 'production') {
 
   // Graceful shutdown for local development
   process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
-    try {
-      await mongoose.disconnect();
-      console.log('MongoDB connection closed');
-    } catch (error) {
-      console.error('Error closing MongoDB connection:', error);
-    }
+    await mongoose.disconnect();
+    console.log('Mongoose connection closed');
     process.exit(0);
   });
 
