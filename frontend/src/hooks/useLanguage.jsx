@@ -29,7 +29,7 @@ export function useLanguage() {
         const fetchLanguages = async () => {
 
             try {
-                const response = await fetch(`${url_prefix}api/language/`);
+                const response = await fetch(`${url_prefix}/api/language/`);
                 const result = await response.json();
 
                 if (result.success && Array.isArray(result.data)) {
