@@ -2,18 +2,16 @@ import { useEffect, useState } from 'react';
 import url_prefix from "../data/variable";
 import { useLanguage } from '../hooks/useLanguage';
 import ServiceCard from './ServiceCard';
-import SectionHeading from './home/SectionHeading';
 
 export default function Services() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  // const [headings, setHeadings] 
   const [error, setError] = useState(null);
   const [language] = useLanguage();
   const [headings, setHeadings] = useState({
-    'heading': 'Not Available For Selected Language',
-    'subheading': '',
-    'description': ''
+    heading: 'Not Available For Selected Language',
+    subheading: '',
+    description: ''
   });
 
   useEffect(() => {
@@ -21,16 +19,24 @@ export default function Services() {
       console.log('Language not yet available, skipping fetch');
       return;
     }
-    const fetchServices = async () => {
 
+    const fetchHeadings = async () => {
       try {
-        // 1. Make the API request
-        const response = await fetch(url_prefix + '/api/treatments/all?page=1&limit=9');
+        const response = await fetch(`${url_prefix}/api/headings/treatment/${language}`);
+        const result = await response.json();
+        if (result.success) {
+          setHeadings(result.data.home[0]); // Fetch headings for 'home' type
+        }
+      } catch (error) {
+        console.error('Error fetching headings:', error);
+      }
+    };
+
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(`${url_prefix}/api/treatments/all?page=1&limit=9`);
         const result = await response.json();
 
-
-        // setServices(result.data);
-        // setError(null);
         if (result.success) {
           let dataToSet;
           if (Array.isArray(result.data)) {
@@ -45,20 +51,9 @@ export default function Services() {
           }
 
           if (dataToSet.length > 0) {
-            dataToSet = dataToSet.slice(0, 9); // takes elements from index 0 up to, but not including, index 9
-          }
-
-
-          if (dataToSet.length > 0) {
-
-            // console.log('Setting aboutData:', dataToSet);
+            dataToSet = dataToSet.slice(0, 9); // Takes elements from index 0 up to, but not including, index 9
             setServices(dataToSet);
-            // console.log(services)
-            // setHeadings({
-            //   title: dataToSet[0].htitle,
-            //   sub: dataToSet[0].hsubtitle,
-            //   desc: dataToSet[0].hdesc
-            // })
+            setError(null);
           }
         }
       } catch (err) {
@@ -74,18 +69,8 @@ export default function Services() {
       }
     };
 
-    const fetchHeadings = async () => {
-      const response = await fetch(url_prefix + '/api/headings/treatment/' + language);
-      const result = await response.json();
-      if (result.success) {
-        console.log(result.data['home'])
-        // setHeadings(result.data['home'][0])
-
-      }
-    }
-    
-    fetchServices();
     fetchHeadings();
+    fetchServices();
   }, [language]);
 
   if (loading) {
@@ -113,22 +98,26 @@ export default function Services() {
     );
   }
 
-
   return (
     <section className="bg-sectiondiv">
-      <div className="container mx-auto  py-12">
-
-        <SectionHeading
-          center={true}
-          // title="Our Medical Services"
-          // subtitle="Specialized Treatments"
-          // description="We offer a wide range of medical treatments and procedures with the highest standards of care"
-          title='treatment'
-          subtitle={headings.subheading}
-          description={headings.description}
-          language={language}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4  mx-auto">
+      <div className="container mx-auto py-12">
+        {/* Render headings directly */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-darktext mb-4">
+            {headings.heading}
+          </h2>
+          {headings.subheading && (
+            <h3 className="text-xl md:text-2xl font-semibold text-primary mb-3">
+              {headings.subheading}
+            </h3>
+          )}
+          {headings.description && (
+            <p className="text-lg text-lighttext max-w-3xl mx-auto">
+              {headings.description}
+            </p>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 mx-auto">
           {services.map((service) => (
             <ServiceCard
               key={service._id}
@@ -140,6 +129,3 @@ export default function Services() {
     </section>
   );
 }
-// row row-cols-lg-3 row-cols-2 g-3 mt-0 g-xl-4 treatment-cnt
-
-// grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4

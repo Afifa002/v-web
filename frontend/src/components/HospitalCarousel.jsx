@@ -1,39 +1,47 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react'; // Added useEffect
-import SectionHeading from "../components/home/SectionHeading";
+import { useEffect, useState } from 'react';
 import url_prefix from "../data/variable";
 import { useLanguage } from '../hooks/useLanguage';
 import HospitalCard from './HospitalCard';
 
-const HospitalCarousel = () => { // Removed hospitals prop
+const HospitalCarousel = () => {
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [language] = useLanguage();
   const [headings, setHeadings] = useState({
-    'title': 'Not Available For Selected Language',
-    'sub': '',
-    'desc': ''
+    heading: 'Not Available For Selected Language',
+    subheading: '',
+    description: ''
   });
 
-  // Fetch hospitals data from API
+  // Fetch hospitals and headings data from API
   useEffect(() => {
     if (!language) {
       console.log('Language not yet available, skipping fetch');
       return;
     }
 
+    const fetchHeadings = async () => {
+      try {
+        const response = await fetch(`${url_prefix}/api/headings/hospital/${language}`);
+        const result = await response.json();
+        if (result.success) {
+          setHeadings(result.data.home[0]); // Fetch headings for 'home' type
+        }
+      } catch (error) {
+        console.error('Error fetching headings:', error);
+      }
+    };
+
     const fetchHospitals = async () => {
       try {
-        const response = await fetch(url_prefix + '/api/hospitals/all');
-
+        const response = await fetch(`${url_prefix}/api/hospitals/all`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
         const result = await response.json();
-
         if (result.success) {
           let dataToSet;
           if (Array.isArray(result.data)) {
@@ -48,14 +56,9 @@ const HospitalCarousel = () => { // Removed hospitals prop
           }
 
           if (dataToSet.length > 0) {
-            console.log('Setting aboutData:', dataToSet);
+            console.log('Setting hospitals:', dataToSet);
             setHospitals(dataToSet);
             setError(null);
-            setHeadings({
-              title: dataToSet[0].htitle,
-              sub: dataToSet[0].hsubtitle,
-              desc: dataToSet[0].hdesc
-            })
           }
         }
       } catch (err) {
@@ -66,7 +69,8 @@ const HospitalCarousel = () => { // Removed hospitals prop
         setLoading(false);
       }
     };
-    console.log('Language from hook:', language);
+
+    fetchHeadings();
     fetchHospitals();
   }, [language]);
 
@@ -109,17 +113,21 @@ const HospitalCarousel = () => { // Removed hospitals prop
     return (
       <section className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
-          <SectionHeading
-            center={true}
-            // title="Partner Hospitals"
-            // subtitle="World-Class Healthcare Facilities"
-            // description="We collaborate with accredited hospitals that offer state-of-the-art technology and expert medical staff"
-            // title={headings.title}
-            // subtitle={headings.sub}
-            // description={headings.desc}
-            title='hospital'
-
-          />
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-darktext mb-4">
+              {headings.heading}
+            </h2>
+            {headings.subheading && (
+              <h3 className="text-xl md:text-2xl font-semibold text-primary mb-3">
+                {headings.subheading}
+              </h3>
+            )}
+            {headings.description && (
+              <p className="text-lg text-lighttext max-w-3xl mx-auto">
+                {headings.description}
+              </p>
+            )}
+          </div>
           <div className="flex justify-center mb-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600"></div>
           </div>
@@ -133,11 +141,21 @@ const HospitalCarousel = () => { // Removed hospitals prop
     return (
       <section className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
-          <SectionHeading
-            center={true}
-            title="Partner Hospitals"
-            subtitle="World-Class Healthcare Facilities"
-          />
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-darktext mb-4">
+              {headings.heading}
+            </h2>
+            {headings.subheading && (
+              <h3 className="text-xl md:text-2xl font-semibold text-primary mb-3">
+                {headings.subheading}
+              </h3>
+            )}
+            {headings.description && (
+              <p className="text-lg text-lighttext max-w-3xl mx-auto">
+                {headings.description}
+              </p>
+            )}
+          </div>
           <div className="text-center text-red-600 py-8">
             <p>Error loading hospitals: {error}</p>
             <button
@@ -157,13 +175,21 @@ const HospitalCarousel = () => { // Removed hospitals prop
     return (
       <section className="bg-gray-50 py-12">
         <div className="container mx-auto px-4">
-          <SectionHeading
-            center={true}
-            title={headings.title}
-            subtitle={headings.sub}
-          // description={headings.desc}
-
-          />
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-darktext mb-4">
+              {headings.heading}
+            </h2>
+            {headings.subheading && (
+              <h3 className="text-xl md:text-2xl font-semibold text-primary mb-3">
+                {headings.subheading}
+              </h3>
+            )}
+            {headings.description && (
+              <p className="text-lg text-lighttext max-w-3xl mx-auto">
+                {headings.description}
+              </p>
+            )}
+          </div>
           <div className="text-center text-gray-500 py-8">
             <p>No hospitals found.</p>
           </div>
@@ -178,13 +204,21 @@ const HospitalCarousel = () => { // Removed hospitals prop
   return (
     <section className="bg-gray-50 py-12">
       <div className="container mx-auto px-4">
-        <SectionHeading
-          center={true}
-          // title="Partner Hospitals"
-          // subtitle="World-Class Healthcare Facilities"
-          // // description="We collaborate with accredited hospitals that offer state-of-the-art technology and expert medical staff"
-          title={'hospital'}
-        />
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-darktext mb-4">
+            {headings.heading}
+          </h2>
+          {headings.subheading && (
+            <h3 className="text-xl md:text-2xl font-semibold text-primary mb-3">
+              {headings.subheading}
+            </h3>
+          )}
+          {headings.description && (
+            <p className="text-lg text-lighttext max-w-3xl mx-auto">
+              {headings.description}
+            </p>
+          )}
+        </div>
 
         {/* Country tabs */}
         <div className="flex justify-center mb-8 border-b border-gray-200">
@@ -203,7 +237,6 @@ const HospitalCarousel = () => { // Removed hospitals prop
             ))}
           </div>
         </div>
-
 
         {/* Animated hospital cards */}
         <div className="relative bg-sectiondiv p-10 rounded-lg min-h-[400px]">
