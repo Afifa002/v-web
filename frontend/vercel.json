@@ -12,9 +12,7 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/"
+            "dest": "/index.html"
         }
-    ],
-    "framework": "vite",
-    "outputDirectory": "dist"
+    ]
 }
