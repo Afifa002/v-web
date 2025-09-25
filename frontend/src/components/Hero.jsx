@@ -1,6 +1,18 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import url_prefix from "../data/variable";
+import { useLanguage } from "../hooks/useLanguage";
+
 
 export default function Hero() {
+
+  const [language] = useLanguage();
+  const [headings, setHeadings] = useState({
+    heading: "Find Trusted Hospitals & Doctors",
+    subheading: "Compare hospitals, connect with specialists, and book appointments effortlessly – across the globe.",
+  });
+
+
   const countries = [
     { name: "India", flag: "🇮🇳" },
     { name: "Germany", flag: "🇩🇪" },
@@ -37,6 +49,38 @@ export default function Hero() {
     },
   ];
 
+
+  useEffect(() => {
+    if (!language) {
+      console.log("Language not yet available, skipping fetch");
+      return;
+    }
+
+    const fetchHeadings = async () => {
+      try {
+        const response = await fetch(
+          `${url_prefix}/api/headings/carousel/${language}`
+        );
+        const result = await response.json();
+        if (result.success) {
+          // console.log('reslut', result.data.home[0])
+          setHeadings({
+            heading: result.data.home[0]?.heading,
+            subheading:
+              result.data.home[0]?.description
+
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching headings:", error);
+        // Keep default headings if fetch fails
+      }
+    };
+
+    fetchHeadings();
+    // console.log("headings:", headings)
+  }, [language]);
+
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-8 sm:py-12 lg:py-16">
       {/* Background Video */}
@@ -62,7 +106,8 @@ export default function Hero() {
           className="font-extrabold leading-tight break-words
                      text-[clamp(1.5rem,5vw,3.5rem)]"
         >
-          Find Trusted Hospitals & Doctors
+          {/* Find Trusted Hospitals & Doctors */}
+          {headings.heading}
         </motion.h1>
 
         {/* Subheading */}
@@ -73,8 +118,10 @@ export default function Hero() {
           className="mt-4 leading-relaxed break-words
                      text-[clamp(0.875rem,3vw,1.25rem)] max-w-md sm:max-w-lg mx-auto"
         >
-          Compare hospitals, connect with specialists, and book appointments
-          effortlessly – across the globe.
+          {/* Compare hospitals, connect with specialists, and book appointments
+          effortlessly – across the globe. */}
+          {headings.subheading}
+
         </motion.p>
 
         {/* Feature Cards */}

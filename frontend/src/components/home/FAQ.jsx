@@ -18,9 +18,12 @@ const FAQ = () => {
   };
   const [language] = useLanguage();
   const [headings, setHeadings] = useState({
-    'title': 'Not Available For Selected Language',
-    'sub': '',
-    'desc': ''
+    heading: "Frequently Asked Questions",
+    subheading: "Find answers to common questions about our medical treatment process",
+    h1: '',
+    h2: '',
+    h3: '',
+    h4: ''
   });
 
 
@@ -31,6 +34,32 @@ const FAQ = () => {
       console.log('Language not yet available, skipping fetch');
       return;
     }
+
+    const fetchHeadings = async () => {
+      try {
+        const response = await fetch(
+          `${url_prefix}/api/headings/FAQs/${language}`
+        );
+        const result = await response.json();
+        if (result.success) {
+          console.log('reslut', result.data.detailPage.headings[0]['text'])
+          setHeadings({
+            heading: result.data.home[0]?.heading,
+            subheading:
+              result.data.home[0]?.description,
+            h1: result.data.detailPage?.headings[0]['text'],
+            h2: result.data.detailPage?.headings[1]['text'],
+            h3: result.data.detailPage?.headings[2]['text'],
+            h4: result.data.detailPage?.headings[3]['text']
+
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching headings:", error);
+        // Keep default headings if fetch fails
+      }
+    };
+
     const fetchFAQs = async () => {
       try {
         const response = await fetch(url_prefix + "/api/faqs");
@@ -61,11 +90,11 @@ const FAQ = () => {
             console.log('Setting aboutData:', dataToSet);
             setFaqData(dataToSet);
             setError(null);
-            setHeadings({
-              title: dataToSet[0].htitle,
-              sub: dataToSet[0].hsubtitle,
-              desc: dataToSet[0].hdesc
-            })
+            // setHeadings({
+            //   title: dataToSet[0].htitle,
+            //   sub: dataToSet[0].hsubtitle,
+            //   desc: dataToSet[0].hdesc
+            // })
           }
         }
 
@@ -78,7 +107,8 @@ const FAQ = () => {
         setLoading(false);
       }
     };
-
+    fetchHeadings();
+    console.log('heading', headings)
     fetchFAQs();
   }, [language]);
 
@@ -140,7 +170,8 @@ const FAQ = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
-              Frequently Asked <span className="text-teal-600">Questions</span>
+              {/* Frequently Asked <span className="text-teal-600">Questions</span> */}
+              {headings.heading}
             </h2>
           </div>
           <div className="text-center text-gray-500 py-8">
@@ -169,10 +200,12 @@ const FAQ = () => {
             <FaQuestionCircle className="text-teal-600 text-2xl" />
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
-            Frequently Asked <span className="text-teal-600">Questions</span>
+            {/* Frequently Asked <span className="text-teal-600">Questions</span> */}
+            {headings.heading}
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Find answers to common questions about our medical treatment process
+            {/* Find answers to common questions about our medical treatment process */}
+            {headings.subheading}
           </p>
         </motion.div>
 
@@ -213,18 +246,22 @@ const FAQ = () => {
           viewport={{ once: true }}
         >
           <h3 className="text-2xl font-semibold text-gray-800 mb-4">
-            Still have questions?
+            {/* Still have questions? */}
+            {headings.h1}
           </h3>
           <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            Our care coordinators are available 24/7 to answer any questions you
-            may have about your medical journey.
+            {/* Our care coordinators are available 24/7 to answer any questions you
+            may have about your medical journey. */}
+            {headings.h2}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button className="bg-[#008080] hover:bg-[#006080] text-white font-medium py-3 px-6 rounded-lg transition-colors duration-300" onClick={() => navigate('/book')}>
-              Contact Us Now
+              {/* Contact Us Now */}
+              {headings.h3}
             </button>
             <button className="border border-[#008080] text-[#008080] hover:bg-blue-50 font-medium py-3 px-6 rounded-lg transition-colors duration-300" onClick={() => navigate('/book')}>
-              Request a Call Back
+              {/* Request a Call Back */}
+              {headings.h4}
             </button>
           </div>
         </motion.div>

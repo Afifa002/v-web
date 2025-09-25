@@ -522,6 +522,9 @@ const HeadingForm = ({
                                 <option value="process">Process</option>
                                 <option value="service">Service</option>
                                 <option value="treatment">Treatment</option>
+                                <option value="patient_opinions">Patient Opinions</option>
+                                <option value="carousel">Carousel</option>
+                                <option value="FAQs">FAQs</option>
                             </select>
                         </div>
 

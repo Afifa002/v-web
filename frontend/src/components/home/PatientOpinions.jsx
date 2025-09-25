@@ -1,7 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
-import url_prefix from "../../data/variable";
-
 import {
   FaChevronLeft,
   FaChevronRight,
@@ -10,16 +8,55 @@ import {
   FaStar,
   FaStethoscope,
 } from "react-icons/fa";
+import url_prefix from "../../data/variable";
+import { useLanguage } from "../../hooks/useLanguage";
 import "./PatientOpinions.css";
 
 const PatientOpinions = () => {
+  const [language] = useLanguage();
+  const [headings, setHeadings] = useState({
+    heading: "Stories of Healing & Hope",
+    subheading: "Discover what our patients have to say about their healthcare journey with us",
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [opinions, setOpinions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+
+
   // Fetch opinions from API
   useEffect(() => {
+    if (!language) {
+      console.log("Language not yet available, skipping fetch");
+      return;
+    }
+
+    const fetchHeadings = async () => {
+      try {
+        const response = await fetch(
+          `${url_prefix}/api/headings/carousel/${language}`
+        );
+        const result = await response.json();
+        if (result.success) {
+          console.log('reslut', result.data.home[0])
+          setHeadings({
+            heading: result.data.home[0]?.heading,
+            subheading:
+              result.data.home[0]?.description
+
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching headings:", error);
+        // Keep default headings if fetch fails
+      }
+    };
+
+    fetchHeadings();
+    // console.log("headings:", headings)
+
+
     const fetchOpinions = async () => {
       try {
         const response = await fetch(
@@ -48,7 +85,7 @@ const PatientOpinions = () => {
     };
 
     fetchOpinions();
-  }, []);
+  }, [language]);
 
   const nextOpinion = () => {
     setCurrentIndex((prevIndex) =>
@@ -83,12 +120,14 @@ const PatientOpinions = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
-              Stories of <span className="text-teal-600">Healing</span> &{" "}
-              <span className="text-teal-600">Hope</span>
+              {/* Stories of <span className="text-teal-600">Healing</span> &{" "}
+              <span className="text-teal-600">Hope</span> */}
+              {headings.heading}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Discover what our patients have to say about their healthcare
-              journey with us
+              {/* Discover what our patients have to say about their healthcare
+              journey with us */}
+              {headings.subheading}
             </p>
           </div>
           <div className="flex justify-center items-center h-64">
@@ -158,12 +197,16 @@ const PatientOpinions = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
-            Stories of <span className="text-teal-600">Healing</span> &{" "}
-            <span className="text-teal-600">Hope</span>
+            {/* Stories of <span className="text-teal-600">Healing</span> &{" "}
+            <span className="text-teal-600">Hope</span> */}
+            {headings.heading}
+
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover what our patients have to say about their healthcare
-            journey with us
+            {/* Discover what our patients have to say about their healthcare
+            journey with us */}
+            {headings.subheading}
+
           </p>
         </motion.div>
 
@@ -286,8 +329,8 @@ const PatientOpinions = () => {
                 key={index}
                 onClick={() => goToOpinion(index)}
                 className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentIndex
-                    ? "bg-teal-600"
-                    : "bg-gray-300 hover:bg-blue-400"
+                  ? "bg-teal-600"
+                  : "bg-gray-300 hover:bg-blue-400"
                   }`}
                 whileHover={{ scale: 1.3 }}
                 aria-label={`Go to testimonial ${index + 1}`}
