@@ -25,7 +25,8 @@ app.use(cors({
     'http://localhost:5173',
     'https://v-web-frontend-flame.vercel.app',
     'https://v-web-frontend-s8pe.vercel.app',
-    'https://v-web-frontend-gaci.vercel.app' // Add new frontend domain
+    'https://v-web-frontend-gaci.vercel.app',
+    'https://v-web-backend.vercel.app' // Add new frontend domain
   ],
   credentials: true
 }));
